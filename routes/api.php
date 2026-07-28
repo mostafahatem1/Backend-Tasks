@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\Auth\AuthController;
 use App\Http\Controllers\Api\Auth\PasswordResetController;
 use App\Http\Controllers\Api\Auth\PhoneVerificationController;
+use App\Http\Controllers\Api\ProductController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -19,4 +20,14 @@ Route::post('/auth/password/reset', [PasswordResetController::class, 'resetPassw
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/auth/phone-verification/send', [PhoneVerificationController::class, 'sendCode'])->name('auth.phone-verification.send');
     Route::post('/auth/phone-verification/verify', [PhoneVerificationController::class, 'verify'])->name('auth.phone-verification.verify');
+
+    Route::get('/products', [ProductController::class, 'index'])->name('products.index');
+    Route::get('/products/{product}', [ProductController::class, 'show'])->name('products.show');
+
+    Route::middleware('admin')->group(function () {
+        Route::post('/admin/products', [ProductController::class, 'store'])->name('admin.products.store');
+        Route::patch('/admin/products/{product}', [ProductController::class, 'update'])->name('admin.products.update');
+        Route::put('/admin/products/{product}', [ProductController::class, 'update']);
+        Route::delete('/admin/products/{product}', [ProductController::class, 'destroy'])->name('admin.products.destroy');
+    });
 });
