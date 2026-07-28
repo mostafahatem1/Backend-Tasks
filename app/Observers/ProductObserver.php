@@ -3,17 +3,17 @@
 namespace App\Observers;
 
 use App\Models\Product;
-use Illuminate\Support\Facades\Storage;
+use App\Traits\UploadTrait;
 
 class ProductObserver
 {
+    use UploadTrait;
+
     /**
      * Handle the Product "deleted" event.
      */
     public function deleted(Product $product): void
     {
-        if (! empty($product->image_path)) {
-            Storage::disk('public')->delete($product->image_path);
-        }
+        $this->removeFile($product->image_path);
     }
 }
