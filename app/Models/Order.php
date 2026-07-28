@@ -2,36 +2,36 @@
 
 namespace App\Models;
 
+use App\Enums\OrderStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class Product extends Model
+class Order extends Model
 {
     use HasFactory;
 
     protected $fillable = [
-        'title',
-        'price',
-        'description',
-        'available_stock',
-        'image_path',
+        'user_id',
+        'status',
+        'total_amount',
     ];
 
     protected function casts(): array
     {
         return [
-            'price' => 'decimal:2',
-            'available_stock' => 'integer',
+            'status' => OrderStatus::class,
+            'total_amount' => 'decimal:2',
         ];
     }
 
-    public function stockNotificationRequests(): HasMany
+    public function user(): BelongsTo
     {
-        return $this->hasMany(ProductStockNotificationRequest::class);
+        return $this->belongsTo(User::class);
     }
 
-    public function orderItems(): HasMany
+    public function items(): HasMany
     {
         return $this->hasMany(OrderItem::class);
     }

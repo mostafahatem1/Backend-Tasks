@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\Auth\AuthController;
 use App\Http\Controllers\Api\Auth\PasswordResetController;
 use App\Http\Controllers\Api\Auth\PhoneVerificationController;
+use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ProductStockNotificationRequestController;
 use Illuminate\Http\Request;
@@ -25,6 +26,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/products', [ProductController::class, 'index'])->name('products.index');
     Route::get('/products/{product}', [ProductController::class, 'show'])->name('products.show');
     Route::post('/products/{product}/stock-notification-requests', [ProductStockNotificationRequestController::class, 'store'])->name('products.stock-notification-requests.store');
+
+    Route::post('/orders', [OrderController::class, 'store'])->name('orders.store');
 
     Route::middleware('admin')->group(function () {
         Route::post('/admin/products', [ProductController::class, 'store'])->name('admin.products.store');
