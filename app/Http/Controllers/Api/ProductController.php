@@ -7,11 +7,13 @@ use App\Http\Requests\Product\StoreProductRequest;
 use App\Http\Requests\Product\UpdateProductRequest;
 use App\Http\Resources\ProductResource;
 use App\Models\Product;
+use App\Traits\UploadTrait;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Storage;
 
 class ProductController extends Controller
 {
+    use UploadTrait;
+
     public function index(): JsonResponse
     {
         $products = Product::orderBy('id', 'desc')->get();
@@ -36,16 +38,14 @@ class ProductController extends Controller
     {
         $validated = $request->validated();
 
-        $imagePath = $request->file('image')->store('products', 'public');
+        $imagePath = $this->uploadFile($request->file('image'), 'products');
         unset($validated['image']);
         $validated['image_path'] = $imagePath;
 
         try {
             $product = Product::create($validated);
         } catch (\Throwable $e) {
-            if ($imagePath) {
-                Storage::disk('public')->delete($imagePath);
-            }
+            $this->removeFile($imagePath);
             throw $e;
         }
 
@@ -63,7 +63,7 @@ class ProductController extends Controller
         $newImagePath = null;
 
         if ($request->hasFile('image')) {
-            $newImagePath = $request->file('image')->store('products', 'public');
+            $newImagePath = $this->uploadFile($request->file('image'), 'products');
             $oldImagePath = $product->image_path;
             $validated['image_path'] = $newImagePath;
             unset($validated['image']);
@@ -72,14 +72,12 @@ class ProductController extends Controller
         try {
             $product->update($validated);
         } catch (\Throwable $e) {
-            if ($newImagePath) {
-                Storage::disk('public')->delete($newImagePath);
-            }
+            $this->removeFile($newImagePath);
             throw $e;
         }
 
         if ($newImagePath && $oldImagePath && $oldImagePath !== $newImagePath) {
-            Storage::disk('public')->delete($oldImagePath);
+            $this->removeFile($oldImagePath);
         }
 
         return apiResponse(
