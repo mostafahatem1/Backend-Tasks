@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Events\ProductCreated;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Product\StoreProductRequest;
 use App\Http\Requests\Product\UpdateProductRequest;
@@ -47,6 +48,12 @@ class ProductController extends Controller
         } catch (\Throwable $e) {
             $this->removeFile($imagePath);
             throw $e;
+        }
+
+        try {
+            ProductCreated::dispatch($product);
+        } catch (\Throwable $e) {
+            report($e);
         }
 
         return apiResponse(
