@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\Auth\AuthController;
+use App\Http\Controllers\Api\Auth\PasswordResetController;
 use App\Http\Controllers\Api\Auth\PhoneVerificationController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -11,6 +12,9 @@ Route::get('/user', function (Request $request) {
 
 Route::post('/auth/register', [AuthController::class, 'register'])->name('auth.register');
 Route::post('/auth/login', [AuthController::class, 'login'])->name('auth.login');
+
+Route::post('/auth/password/forgot', [PasswordResetController::class, 'forgotPassword'])->name('auth.password.forgot');
+Route::post('/auth/password/reset', [PasswordResetController::class, 'resetPassword'])->name('auth.password.reset');
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/auth/phone-verification/send', [PhoneVerificationController::class, 'sendCode'])->name('auth.phone-verification.send');

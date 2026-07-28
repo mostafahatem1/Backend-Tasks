@@ -18,10 +18,16 @@ class LogPhoneChannel
 
         $data = $notification->toLogPhone($notifiable);
 
-        Log::info('Phone verification code notification', [
+        $payload = [
             'phone' => $data['phone'] ?? null,
             'code' => $data['code'] ?? null,
             'expires_in_minutes' => $data['expires_in_minutes'] ?? null,
-        ]);
+        ];
+
+        if (isset($data['purpose'])) {
+            $payload['purpose'] = $data['purpose'];
+        }
+
+        Log::info('Phone code notification', $payload);
     }
 }
