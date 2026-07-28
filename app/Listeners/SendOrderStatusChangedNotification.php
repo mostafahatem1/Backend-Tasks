@@ -2,9 +2,9 @@
 
 namespace App\Listeners;
 
-use App\Events\ProductCreated;
+use App\Events\OrderStatusChanged;
 use App\Models\User;
-use App\Notifications\NewProductNotification;
+use App\Notifications\OrderStatusChangedNotification;
 use App\Support\NotificationDuplicateKeyDetector;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
@@ -12,7 +12,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\DB;
 
-class SendNewProductNotifications implements ShouldQueueAfterCommit, ShouldBeUnique
+class SendOrderStatusChangedNotification implements ShouldQueueAfterCommit, ShouldBeUnique
 {
     use InteractsWithQueue;
 
@@ -36,39 +36,41 @@ class SendNewProductNotifications implements ShouldQueueAfterCommit, ShouldBeUni
     /**
      * Get the unique identifier for the queued listener lock.
      */
-    public function uniqueId(ProductCreated $event): string
+    public function uniqueId(OrderStatusChanged $event): string
     {
-        return 'new-product-notifications:' . $event->productId;
+        return 'order-status-notification:' . $event->historyId;
     }
 
     /**
      * Handle the event.
      */
-    public function handle(ProductCreated $event): void
+    public function handle(OrderStatusChanged $event): void
     {
-        User::where('role', 'user')->chunkById(100, function ($users) use ($event) {
-            foreach ($users as $user) {
-                $notification = new NewProductNotification($event, $user->id);
+        $owner = User::find($event->ownerUserId);
 
-                $exists = DB::table('notifications')
-                    ->where('id', $notification->id)
-                    ->exists();
+        if (! $owner) {
+            return;
+        }
 
-                if ($exists) {
-                    continue;
-                }
+        $notification = new OrderStatusChangedNotification($event, $owner->id);
 
-                try {
-                    $user->notify($notification);
-                } catch (QueryException $e) {
-                    if ($this->isDuplicateNotificationIdException($e)) {
-                        continue;
-                    }
+        $exists = DB::table('notifications')
+            ->where('id', $notification->id)
+            ->exists();
 
-                    throw $e;
-                }
+        if ($exists) {
+            return;
+        }
+
+        try {
+            $owner->notify($notification);
+        } catch (QueryException $e) {
+            if ($this->isDuplicateNotificationIdException($e)) {
+                return;
             }
-        });
+
+            throw $e;
+        }
     }
 
     /**

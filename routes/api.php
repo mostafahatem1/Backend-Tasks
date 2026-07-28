@@ -36,5 +36,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/admin/products/{product}', [ProductController::class, 'update'])->name('admin.products.update');
         Route::put('/admin/products/{product}', [ProductController::class, 'update']);
         Route::delete('/admin/products/{product}', [ProductController::class, 'destroy'])->name('admin.products.destroy');
+
+        Route::patch('/admin/orders/{order}/status', [OrderController::class, 'updateStatus'])->name('admin.orders.status.update');
     });
 });
