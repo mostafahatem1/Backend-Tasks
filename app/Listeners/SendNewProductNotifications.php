@@ -60,12 +60,7 @@ class SendNewProductNotifications implements ShouldQueueAfterCommit, ShouldBeUni
                 try {
                     $user->notify($notification);
                 } catch (QueryException $e) {
-                    if (
-                        str_contains($e->getMessage(), '1062') ||
-                        str_contains($e->getMessage(), 'UNIQUE') ||
-                        str_contains($e->getMessage(), '23000') ||
-                        $e->getCode() === '23000'
-                    ) {
+                    if ($this->isDuplicateNotificationIdException($e)) {
                         continue;
                     }
 
@@ -73,5 +68,39 @@ class SendNewProductNotifications implements ShouldQueueAfterCommit, ShouldBeUni
                 }
             }
         });
+    }
+
+    /**
+     * Determine if the query exception is a duplicate notification ID constraint violation.
+     */
+    private function isDuplicateNotificationIdException(QueryException $exception): bool
+    {
+        $message = strtolower($exception->getMessage());
+
+        $relatesToNotificationsId = str_contains($message, 'notifications')
+            || str_contains($message, 'notifications.id')
+            || str_contains($message, 'notifications_pkey')
+            || str_contains($message, 'primary');
+
+        if (! $relatesToNotificationsId) {
+            return false;
+        }
+
+        // MySQL: Duplicate entry (Error 1062 / SQLSTATE 23000)
+        if (str_contains($message, '1062') || str_contains($message, 'duplicate entry')) {
+            return true;
+        }
+
+        // PostgreSQL: Unique violation (SQLSTATE 23505)
+        if (str_contains($message, '23505') || str_contains($message, 'unique constraint')) {
+            return true;
+        }
+
+        // SQLite: UNIQUE constraint failed
+        if (str_contains($message, 'unique constraint failed') || (str_contains($message, 'unique') && str_contains($message, 'notifications.id'))) {
+            return true;
+        }
+
+        return false;
     }
 }
