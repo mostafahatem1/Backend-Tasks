@@ -27,7 +27,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/products/{product}', [ProductController::class, 'show'])->name('products.show');
     Route::post('/products/{product}/stock-notification-requests', [ProductStockNotificationRequestController::class, 'store'])->name('products.stock-notification-requests.store');
 
+    Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
     Route::post('/orders', [OrderController::class, 'store'])->name('orders.store');
+    Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
 
     Route::middleware('admin')->group(function () {
         Route::post('/admin/products', [ProductController::class, 'store'])->name('admin.products.store');

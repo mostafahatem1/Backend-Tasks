@@ -17,6 +17,7 @@ class OrderResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'user_id' => $this->user_id,
             'status' => $this->status instanceof BackedEnum ? $this->status->value : (string) $this->status,
             'total_amount' => number_format((float) $this->total_amount, 2, '.', ''),
             'items' => OrderItemResource::collection($this->whenLoaded('items')),
