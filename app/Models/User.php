@@ -46,4 +46,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(Order::class);
     }
+
+    public function orderStatusChanges(): HasMany
+    {
+        return $this->hasMany(OrderStatusHistory::class, 'changed_by_user_id');
+    }
 }
