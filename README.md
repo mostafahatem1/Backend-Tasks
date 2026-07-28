@@ -56,3 +56,18 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+
+## Queue Worker
+
+Queued notifications require a running worker to process background jobs.
+
+To run the queue worker during development, execute:
+
+```bash
+php artisan queue:work --queue=notifications,default --tries=3
+```
+
+- New-product notifications are placed on the dedicated `notifications` queue.
+- The API response returns immediately and does not wait for notification delivery.
+- The worker must remain running during development and production.
+- In production environments, the queue worker should be managed using a process manager (such as Supervisor).

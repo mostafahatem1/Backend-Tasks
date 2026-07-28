@@ -8,9 +8,8 @@ use App\Models\Product;
 use App\Models\User;
 use App\Notifications\NewProductNotification;
 use Illuminate\Events\CallQueuedListener;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
@@ -19,7 +18,7 @@ use Tests\TestCase;
 
 class NewProductNotificationTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseMigrations;
 
     public function test_creating_a_product_dispatches_product_created(): void
     {
@@ -101,8 +100,6 @@ class NewProductNotificationTest extends TestCase
         ]);
 
         $response->assertStatus(201);
-
-        DB::commit();
 
         Queue::assertPushedOn('notifications', CallQueuedListener::class, function ($job) {
             return $job->class === SendNewProductNotifications::class;
@@ -232,10 +229,60 @@ class NewProductNotificationTest extends TestCase
         $response->assertStatus(201);
         $this->assertDatabaseHas('products', ['title' => 'Gaming Laptop']);
 
-        DB::commit();
-
         Queue::assertPushedOn('notifications', CallQueuedListener::class, function ($job) {
             return $job->class === SendNewProductNotifications::class;
         });
+    }
+
+    public function test_is_duplicate_notification_id_exception_identifies_duplicate_and_unrelated_exceptions(): void
+    {
+        $listener = new SendNewProductNotifications();
+        $refMethod = new \ReflectionMethod(SendNewProductNotifications::class, 'isDuplicateNotificationIdException');
+        $refMethod->setAccessible(true);
+
+        // 1. MySQL duplicate key on notifications.PRIMARY
+        $mysqlDuplicate = new \Illuminate\Database\QueryException(
+            'mysql',
+            'INSERT INTO notifications ...',
+            [],
+            new \Exception("SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry 'new-product:1:user:2' for key 'notifications.PRIMARY'")
+        );
+        $this->assertTrue($refMethod->invoke($listener, $mysqlDuplicate));
+
+        // 2. SQLite duplicate key on notifications.id
+        $sqliteDuplicate = new \Illuminate\Database\QueryException(
+            'sqlite',
+            'INSERT INTO notifications ...',
+            [],
+            new \Exception("SQLSTATE[23000]: Integrity constraint violation: 19 UNIQUE constraint failed: notifications.id")
+        );
+        $this->assertTrue($refMethod->invoke($listener, $sqliteDuplicate));
+
+        // 3. PostgreSQL duplicate key on notifications_pkey
+        $postgresDuplicate = new \Illuminate\Database\QueryException(
+            'pgsql',
+            'INSERT INTO notifications ...',
+            [],
+            new \Exception("SQLSTATE[23505]: Unique violation: 7 ERROR: duplicate key value violates unique constraint \"notifications_pkey\"")
+        );
+        $this->assertTrue($refMethod->invoke($listener, $postgresDuplicate));
+
+        // 4. Foreign key constraint violation (unrelated SQLSTATE 23000)
+        $foreignKeyException = new \Illuminate\Database\QueryException(
+            'mysql',
+            'INSERT INTO notifications ...',
+            [],
+            new \Exception("SQLSTATE[23000]: Integrity constraint violation: 1452 Cannot add or update a child row: a foreign key constraint fails")
+        );
+        $this->assertFalse($refMethod->invoke($listener, $foreignKeyException));
+
+        // 5. NOT NULL constraint failure (unrelated SQLSTATE 23000)
+        $notNullException = new \Illuminate\Database\QueryException(
+            'sqlite',
+            'INSERT INTO notifications ...',
+            [],
+            new \Exception("SQLSTATE[23000]: Integrity constraint violation: 19 NOT NULL constraint failed: notifications.data")
+        );
+        $this->assertFalse($refMethod->invoke($listener, $notNullException));
     }
 }
