@@ -5,6 +5,7 @@ namespace App\Listeners;
 use App\Events\ProductCreated;
 use App\Models\User;
 use App\Notifications\NewProductNotification;
+use App\Support\NotificationDuplicateKeyDetector;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueueAfterCommit;
 use Illuminate\Database\QueryException;
@@ -75,32 +76,6 @@ class SendNewProductNotifications implements ShouldQueueAfterCommit, ShouldBeUni
      */
     private function isDuplicateNotificationIdException(QueryException $exception): bool
     {
-        $message = strtolower($exception->getMessage());
-
-        $relatesToNotificationsId = str_contains($message, 'notifications')
-            || str_contains($message, 'notifications.id')
-            || str_contains($message, 'notifications_pkey')
-            || str_contains($message, 'primary');
-
-        if (! $relatesToNotificationsId) {
-            return false;
-        }
-
-        // MySQL: Duplicate entry (Error 1062 / SQLSTATE 23000)
-        if (str_contains($message, '1062') || str_contains($message, 'duplicate entry')) {
-            return true;
-        }
-
-        // PostgreSQL: Unique violation (SQLSTATE 23505)
-        if (str_contains($message, '23505') || str_contains($message, 'unique constraint')) {
-            return true;
-        }
-
-        // SQLite: UNIQUE constraint failed
-        if (str_contains($message, 'unique constraint failed') || (str_contains($message, 'unique') && str_contains($message, 'notifications.id'))) {
-            return true;
-        }
-
-        return false;
+        return NotificationDuplicateKeyDetector::isDuplicateNotificationIdException($exception);
     }
 }

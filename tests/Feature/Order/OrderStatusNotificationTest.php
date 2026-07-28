@@ -282,15 +282,31 @@ class OrderStatusNotificationTest extends TestCase
         $admin = User::factory()->admin()->create();
         $order = Order::factory()->create(['status' => OrderStatus::PENDING]);
 
-        Sanctum::actingAs($admin);
+        $listener = function (OrderStatusChanged $event) {
+            throw new \RuntimeException('Simulated event dispatch failure');
+        };
 
-        $response = $this->patchJson("/api/admin/orders/{$order->id}/status", [
-            'status' => 'confirmed',
-        ]);
+        Event::listen(OrderStatusChanged::class, $listener);
 
-        $response->assertStatus(200);
+        try {
+            Sanctum::actingAs($admin);
 
-        $this->assertEquals(OrderStatus::CONFIRMED, $order->fresh()->status);
-        $this->assertDatabaseCount('order_status_histories', 1);
+            $response = $this->patchJson("/api/admin/orders/{$order->id}/status", [
+                'status' => 'confirmed',
+            ]);
+
+            $response->assertStatus(200)
+                ->assertJson([
+                    'message' => 'Order status updated successfully.',
+                ]);
+
+            $this->assertEquals(OrderStatus::CONFIRMED, $order->fresh()->status);
+            $this->assertDatabaseCount('order_status_histories', 1);
+        } finally {
+            $dispatcher = Event::getFacadeRoot();
+            if ($dispatcher) {
+                $dispatcher->forget(OrderStatusChanged::class);
+            }
+        }
     }
 }
