@@ -147,6 +147,61 @@ class OrderCreationTest extends TestCase
             ]);
     }
 
+    public function test_exact_money_calculations_for_decimal_prices(): void
+    {
+        $product = Product::factory()->create([
+            'price' => 19.99,
+            'available_stock' => 10,
+        ]);
+
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $response = $this->postJson('/api/orders', [
+            'items' => [
+                ['product_id' => $product->id, 'quantity' => 3],
+            ],
+        ]);
+
+        $response->assertStatus(201)
+            ->assertJson([
+                'data' => [
+                    'total_amount' => '59.97',
+                    'items' => [
+                        [
+                            'unit_price' => '19.99',
+                            'line_total' => '59.97',
+                        ],
+                    ],
+                ],
+            ]);
+    }
+
+    public function test_exact_money_calculations_across_multiple_decimal_price_formats(): void
+    {
+        $p1 = Product::factory()->create(['price' => 0.01, 'available_stock' => 10]);
+        $p2 = Product::factory()->create(['price' => 10.50, 'available_stock' => 10]);
+        $p3 = Product::factory()->create(['price' => 99.99, 'available_stock' => 10]);
+
+        $user = User::factory()->create();
+        Sanctum::actingAs($user);
+
+        $response = $this->postJson('/api/orders', [
+            'items' => [
+                ['product_id' => $p1->id, 'quantity' => 1],
+                ['product_id' => $p2->id, 'quantity' => 1],
+                ['product_id' => $p3->id, 'quantity' => 1],
+            ],
+        ]);
+
+        $response->assertStatus(201)
+            ->assertJson([
+                'data' => [
+                    'total_amount' => '110.50',
+                ],
+            ]);
+    }
+
     public function test_validation_rejects_invalid_inputs(): void
     {
         $user = User::factory()->create();
@@ -261,7 +316,7 @@ class OrderCreationTest extends TestCase
         $this->assertDatabaseCount('orders', 0);
     }
 
-    public function test_competing_orders_cannot_oversell_the_final_stock(): void
+    public function test_a_second_order_is_rejected_after_the_first_order_consumes_the_final_stock(): void
     {
         $product = Product::factory()->create(['available_stock' => 1]);
 
@@ -293,23 +348,40 @@ class OrderCreationTest extends TestCase
 
     public function test_an_exception_during_order_item_creation_rolls_back_the_complete_operation(): void
     {
-        $product = Product::factory()->create(['available_stock' => 10]);
+        $product1 = Product::factory()->create(['available_stock' => 10]);
+        $product2 = Product::factory()->create(['available_stock' => 10]);
         $user = User::factory()->create();
 
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Simulated database error during order creation.');
+        $itemCount = 0;
+        $callback = function (OrderItem $item) use (&$itemCount) {
+            $itemCount++;
+            if ($itemCount === 2) {
+                throw new \RuntimeException('Simulated error during second order item creation.');
+            }
+        };
 
-        // Force a failure inside the order creation transaction
-        $mockService = $this->partialMock(OrderService::class, function ($mock) use ($user, $product) {
-            $mock->shouldReceive('createOrder')
-                ->andThrow(new \RuntimeException('Simulated database error during order creation.'));
-        });
+        OrderItem::creating($callback);
 
-        $mockService->createOrder($user, [['product_id' => $product->id, 'quantity' => 2]]);
+        try {
+            $service = app(OrderService::class);
+            $service->createOrder($user, [
+                ['product_id' => $product1->id, 'quantity' => 2],
+                ['product_id' => $product2->id, 'quantity' => 3],
+            ]);
+            $this->fail('Expected RuntimeException was not thrown.');
+        } catch (\RuntimeException $e) {
+            $this->assertEquals('Simulated error during second order item creation.', $e->getMessage());
+        } finally {
+            $dispatcher = OrderItem::getEventDispatcher();
+            if ($dispatcher) {
+                $dispatcher->forget('eloquent.creating: App\Models\OrderItem');
+            }
+        }
 
         $this->assertDatabaseCount('orders', 0);
         $this->assertDatabaseCount('order_items', 0);
-        $this->assertEquals(10, $product->fresh()->available_stock);
+        $this->assertEquals(10, $product1->fresh()->available_stock);
+        $this->assertEquals(10, $product2->fresh()->available_stock);
     }
 
     public function test_product_stock_changing_from_a_positive_value_to_zero_does_not_dispatch_product_restocked(): void

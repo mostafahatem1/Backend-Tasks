@@ -9,6 +9,7 @@ use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use UnexpectedValueException;
 
 class OrderService
 {
@@ -54,15 +55,15 @@ class OrderService
                     continue;
                 }
 
-                $unitPriceCents = (int) round((float) $product->price * 100);
+                $unitPriceCents = $this->decimalToMinorUnits((string) $product->price);
                 $lineTotalCents = $unitPriceCents * $quantity;
                 $totalOrderCents += $lineTotalCents;
 
                 $orderItemsData[] = [
                     'product' => $product,
                     'quantity' => $quantity,
-                    'unit_price' => number_format($unitPriceCents / 100, 2, '.', ''),
-                    'line_total' => number_format($lineTotalCents / 100, 2, '.', ''),
+                    'unit_price' => $this->minorUnitsToDecimal($unitPriceCents),
+                    'line_total' => $this->minorUnitsToDecimal($lineTotalCents),
                 ];
             }
 
@@ -73,7 +74,7 @@ class OrderService
             $order = Order::create([
                 'user_id' => $user->id,
                 'status' => OrderStatus::PENDING,
-                'total_amount' => number_format($totalOrderCents / 100, 2, '.', ''),
+                'total_amount' => $this->minorUnitsToDecimal($totalOrderCents),
             ]);
 
             foreach ($orderItemsData as $itemData) {
@@ -96,5 +97,42 @@ class OrderService
 
             return $order->load('items');
         }, 3);
+    }
+
+    /**
+     * Convert a non-negative decimal string to integer minor units (cents).
+     */
+    private function decimalToMinorUnits(string $amount): int
+    {
+        $trimmed = trim($amount);
+
+        if (! preg_match('/^\d+(\.\d{1,2})?$/', $trimmed)) {
+            throw new UnexpectedValueException("Invalid database price value: '{$amount}'");
+        }
+
+        $parts = explode('.', $trimmed);
+        $dollars = (int) $parts[0];
+        $cents = 0;
+
+        if (isset($parts[1])) {
+            $cents = (int) str_pad($parts[1], 2, '0', STR_PAD_RIGHT);
+        }
+
+        return ($dollars * 100) + $cents;
+    }
+
+    /**
+     * Convert integer minor units (cents) to a formatted two-decimal string.
+     */
+    private function minorUnitsToDecimal(int $amount): string
+    {
+        if ($amount < 0) {
+            throw new UnexpectedValueException("Invalid minor units amount: {$amount}");
+        }
+
+        $dollars = intdiv($amount, 100);
+        $cents = $amount % 100;
+
+        return sprintf('%d.%02d', $dollars, $cents);
     }
 }
