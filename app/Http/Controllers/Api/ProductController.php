@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Events\ProductCreated;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Product\ListProductsRequest;
 use App\Http\Requests\Product\StoreProductRequest;
 use App\Http\Requests\Product\UpdateProductRequest;
+use App\Http\Resources\ProductCollection;
 use App\Http\Resources\ProductResource;
 use App\Models\Product;
 use App\Traits\UploadTrait;
@@ -15,15 +17,20 @@ class ProductController extends Controller
 {
     use UploadTrait;
 
-    public function index(): JsonResponse
+    public function index(ListProductsRequest $request): ProductCollection
     {
-        $products = Product::orderBy('id', 'desc')->get();
+        $validated = $request->validated();
 
-        return apiResponse(
-            data: ProductResource::collection($products),
-            message: 'Products retrieved successfully.',
-            status: 200
-        );
+        $products = Product::query()
+            ->filter($validated)
+            ->sortByOptions(
+                $validated['sort_by'] ?? 'id',
+                $validated['sort_direction'] ?? 'desc'
+            )
+            ->paginate((int) ($validated['per_page'] ?? 15))
+            ->withQueryString();
+
+        return new ProductCollection($products);
     }
 
     public function show(Product $product): JsonResponse
