@@ -3,11 +3,14 @@
 namespace App\Services;
 
 use App\Enums\OrderStatus;
+use App\Exceptions\IdempotencyKeyConflictException;
 use App\Exceptions\InsufficientStockException;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\User;
+use App\Support\OrderIdempotencyDuplicateKeyDetector;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use UnexpectedValueException;
 
@@ -17,86 +20,191 @@ class OrderService
      * Create a new order with atomic stock deduction and concurrency-safe locking.
      *
      * @param  array<int, array{product_id: int, quantity: int}>  $items
+     * @return array{order: Order, replayed: bool}
      */
-    public function createOrder(User $user, array $items): Order
+    public function createOrder(User $user, array $items, ?string $idempotencyKey = null): array
     {
-        return DB::transaction(function () use ($user, $items) {
-            $requestedProductIds = array_column($items, 'product_id');
-            sort($requestedProductIds);
+        $requestHash = $idempotencyKey !== null ? $this->generateRequestHash($items) : null;
 
-            $products = Product::whereIn('id', $requestedProductIds)
-                ->orderBy('id', 'asc')
-                ->lockForUpdate()
-                ->get()
-                ->keyBy('id');
+        if ($idempotencyKey === null) {
+            $result = DB::transaction(function () use ($user, $items) {
+                return $this->executeOrderCreationProcess($user, $items, null, null);
+            }, 3);
 
-            $unavailableItems = [];
-            $totalOrderCents = 0;
-            $orderItemsData = [];
+            return $result;
+        }
 
-            foreach ($items as $item) {
-                $productId = (int) $item['product_id'];
-                $quantity = (int) $item['quantity'];
-
-                if (! isset($products[$productId])) {
-                    throw new \InvalidArgumentException("Product {$productId} does not exist.");
+        try {
+            return DB::transaction(function () use ($user, $items, $idempotencyKey, $requestHash) {
+                // First existing-key check (before locking products)
+                $existingOrder = $this->findExistingOrder($user->id, $idempotencyKey);
+                if ($existingOrder) {
+                    return $this->resolveExistingOrder($existingOrder, $requestHash, $idempotencyKey);
                 }
 
-                $product = $products[$productId];
-                $availableStock = (int) $product->available_stock;
+                return $this->executeOrderCreationProcess($user, $items, $idempotencyKey, $requestHash);
+            }, 3);
+        } catch (QueryException $e) {
+            if (OrderIdempotencyDuplicateKeyDetector::isDuplicateKey($e)) {
+                $existingOrder = $this->findExistingOrder($user->id, $idempotencyKey);
 
-                if ($availableStock < $quantity) {
-                    $unavailableItems[] = [
-                        'product_id' => $product->id,
-                        'title' => $product->title,
-                        'requested_quantity' => $quantity,
-                        'available_stock' => $availableStock,
-                    ];
-                    continue;
+                if (! $existingOrder) {
+                    throw $e;
                 }
 
-                $unitPriceCents = $this->decimalToMinorUnits((string) $product->price);
-                $lineTotalCents = $unitPriceCents * $quantity;
-                $totalOrderCents += $lineTotalCents;
+                return $this->resolveExistingOrder($existingOrder, $requestHash, $idempotencyKey);
+            }
 
-                $orderItemsData[] = [
-                    'product' => $product,
-                    'quantity' => $quantity,
-                    'unit_price' => $this->minorUnitsToDecimal($unitPriceCents),
-                    'line_total' => $this->minorUnitsToDecimal($lineTotalCents),
+            throw $e;
+        }
+    }
+
+    /**
+     * Find an existing order by user ID and idempotency key.
+     */
+    private function findExistingOrder(int $userId, string $idempotencyKey): ?Order
+    {
+        return Order::where('user_id', $userId)
+            ->where('idempotency_key', $idempotencyKey)
+            ->with('items')
+            ->first();
+    }
+
+    /**
+     * Resolve an existing order replay or throw a conflict exception.
+     *
+     * @return array{order: Order, replayed: bool}
+     */
+    private function resolveExistingOrder(Order $existingOrder, string $requestHash, string $idempotencyKey): array
+    {
+        if (! hash_equals((string) $existingOrder->request_hash, $requestHash)) {
+            throw new IdempotencyKeyConflictException($idempotencyKey);
+        }
+
+        return [
+            'order' => $existingOrder->relationLoaded('items') ? $existingOrder : $existingOrder->load('items'),
+            'replayed' => true,
+        ];
+    }
+
+    /**
+     * Execute the order creation process including product locking and stock validation.
+     *
+     * @return array{order: Order, replayed: bool}
+     */
+    private function executeOrderCreationProcess(
+        User $user,
+        array $items,
+        ?string $idempotencyKey,
+        ?string $requestHash
+    ): array {
+        $requestedProductIds = array_column($items, 'product_id');
+        sort($requestedProductIds);
+
+        $products = Product::whereIn('id', $requestedProductIds)
+            ->orderBy('id', 'asc')
+            ->lockForUpdate()
+            ->get()
+            ->keyBy('id');
+
+        // Second existing-key check (after acquiring product locks)
+        if ($idempotencyKey !== null) {
+            $existingOrder = $this->findExistingOrder($user->id, $idempotencyKey);
+            if ($existingOrder) {
+                return $this->resolveExistingOrder($existingOrder, $requestHash, $idempotencyKey);
+            }
+        }
+
+        $unavailableItems = [];
+        $totalOrderCents = 0;
+        $orderItemsData = [];
+
+        foreach ($items as $item) {
+            $productId = (int) $item['product_id'];
+            $quantity = (int) $item['quantity'];
+
+            if (! isset($products[$productId])) {
+                throw new \InvalidArgumentException("Product {$productId} does not exist.");
+            }
+
+            $product = $products[$productId];
+            $availableStock = (int) $product->available_stock;
+
+            if ($availableStock < $quantity) {
+                $unavailableItems[] = [
+                    'product_id' => $product->id,
+                    'title' => $product->title,
+                    'requested_quantity' => $quantity,
+                    'available_stock' => $availableStock,
                 ];
+                continue;
             }
 
-            if (! empty($unavailableItems)) {
-                throw new InsufficientStockException($unavailableItems);
-            }
+            $unitPriceCents = $this->decimalToMinorUnits((string) $product->price);
+            $lineTotalCents = $unitPriceCents * $quantity;
+            $totalOrderCents += $lineTotalCents;
 
-            $order = Order::create([
-                'user_id' => $user->id,
-                'status' => OrderStatus::PENDING,
-                'total_amount' => $this->minorUnitsToDecimal($totalOrderCents),
+            $orderItemsData[] = [
+                'product' => $product,
+                'quantity' => $quantity,
+                'unit_price' => $this->minorUnitsToDecimal($unitPriceCents),
+                'line_total' => $this->minorUnitsToDecimal($lineTotalCents),
+            ];
+        }
+
+        if (! empty($unavailableItems)) {
+            throw new InsufficientStockException($unavailableItems);
+        }
+
+        $order = Order::create([
+            'user_id' => $user->id,
+            'status' => OrderStatus::PENDING,
+            'total_amount' => $this->minorUnitsToDecimal($totalOrderCents),
+            'idempotency_key' => $idempotencyKey,
+            'request_hash' => $requestHash,
+        ]);
+
+        foreach ($orderItemsData as $itemData) {
+            /** @var Product $product */
+            $product = $itemData['product'];
+            $quantity = (int) $itemData['quantity'];
+
+            OrderItem::create([
+                'order_id' => $order->id,
+                'product_id' => $product->id,
+                'product_title' => $product->title,
+                'unit_price' => $itemData['unit_price'],
+                'quantity' => $quantity,
+                'line_total' => $itemData['line_total'],
             ]);
 
-            foreach ($orderItemsData as $itemData) {
-                /** @var Product $product */
-                $product = $itemData['product'];
-                $quantity = (int) $itemData['quantity'];
+            $product->available_stock = (int) $product->available_stock - $quantity;
+            $product->save();
+        }
 
-                OrderItem::create([
-                    'order_id' => $order->id,
-                    'product_id' => $product->id,
-                    'product_title' => $product->title,
-                    'unit_price' => $itemData['unit_price'],
-                    'quantity' => $quantity,
-                    'line_total' => $itemData['line_total'],
-                ]);
+        return [
+            'order' => $order->load('items'),
+            'replayed' => false,
+        ];
+    }
 
-                $product->available_stock = (int) $product->available_stock - $quantity;
-                $product->save();
-            }
+    /**
+     * Generate canonical SHA-256 request hash from normalized items.
+     *
+     * @param  array<int, array{product_id: int, quantity: int}>  $items
+     */
+    private function generateRequestHash(array $items): string
+    {
+        $normalized = array_map(function ($item) {
+            return [
+                'product_id' => (int) $item['product_id'],
+                'quantity' => (int) $item['quantity'],
+            ];
+        }, $items);
 
-            return $order->load('items');
-        }, 3);
+        usort($normalized, fn ($a, $b) => $a['product_id'] <=> $b['product_id']);
+
+        return hash('sha256', json_encode($normalized, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
     }
 
     /**

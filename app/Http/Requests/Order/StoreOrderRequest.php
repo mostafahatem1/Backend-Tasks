@@ -15,6 +15,17 @@ class StoreOrderRequest extends FormRequest
     }
 
     /**
+     * Get data to be validated from the request.
+     */
+    public function validationData(): array
+    {
+        $data = parent::validationData();
+        $data['idempotency_key'] = $this->header('Idempotency-Key');
+
+        return $data;
+    }
+
+    /**
      * Get the validation rules that apply to the request.
      *
      * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
@@ -22,6 +33,7 @@ class StoreOrderRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'idempotency_key' => ['nullable', 'string', 'max:64', 'regex:/^[A-Za-z0-9._:-]+$/'],
             'items' => ['required', 'array', 'min:1'],
             'items.*' => ['required', 'array'],
             'items.*.product_id' => ['required', 'integer', 'distinct', 'exists:products,id'],
@@ -37,12 +49,31 @@ class StoreOrderRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'idempotency_key.string' => 'The idempotency key must be a string.',
+            'idempotency_key.max' => 'The idempotency key may not exceed 64 characters.',
+            'idempotency_key.regex' => 'The idempotency key contains invalid characters.',
             'items.required' => 'At least one item is required.',
             'items.min' => 'At least one item is required.',
             'items.*.product_id.distinct' => 'Duplicate products are not allowed in the same order.',
             'items.*.product_id.exists' => 'The selected product does not exist.',
             'items.*.quantity.min' => 'Quantity must be at least 1.',
         ];
+    }
+
+    /**
+     * Get the validated idempotency key from the header.
+     */
+    public function idempotencyKey(): ?string
+    {
+        $header = $this->header('Idempotency-Key');
+
+        if (! is_string($header)) {
+            return null;
+        }
+
+        $trimmed = trim($header);
+
+        return $trimmed === '' ? null : $trimmed;
     }
 
     /**

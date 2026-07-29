@@ -16,6 +16,18 @@ class Order extends Model
         'user_id',
         'status',
         'total_amount',
+        'idempotency_key',
+        'request_hash',
+    ];
+
+    /**
+     * The attributes that should be hidden for serialization.
+     *
+     * @var array<int, string>
+     */
+    protected $hidden = [
+        'idempotency_key',
+        'request_hash',
     ];
 
     protected function casts(): array
