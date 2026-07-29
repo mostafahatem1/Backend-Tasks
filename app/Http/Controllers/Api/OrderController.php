@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Enums\OrderStatus;
 use App\Events\OrderStatusChanged;
+use App\Exceptions\IdempotencyKeyConflictException;
 use App\Exceptions\InsufficientStockException;
 use App\Exceptions\InvalidOrderStatusTransitionException;
 use App\Http\Controllers\Controller;
@@ -56,19 +57,39 @@ class OrderController extends Controller
     public function store(StoreOrderRequest $request, OrderService $orderService): JsonResponse
     {
         try {
-            $order = $orderService->createOrder($request->user(), $request->validated()['items']);
+            $result = $orderService->createOrder(
+                $request->user(),
+                $request->validated()['items'],
+                $request->idempotencyKey()
+            );
+
+            $order = $result['order'];
+            $replayed = $result['replayed'];
+
+            if ($replayed) {
+                return apiResponse(
+                    data: new OrderResource($order),
+                    message: 'Order already created for this idempotency key.',
+                    status: 200
+                )->header('Idempotency-Replayed', 'true');
+            }
 
             return apiResponse(
                 data: new OrderResource($order),
                 message: 'Order created successfully.',
                 status: 201
-            );
+            )->header('Idempotency-Replayed', 'false');
         } catch (InsufficientStockException $e) {
             return apiResponse(
                 data: [
                     'unavailable_items' => $e->getUnavailableItems(),
                 ],
                 message: 'One or more products do not have enough stock.',
+                status: 409
+            );
+        } catch (IdempotencyKeyConflictException $e) {
+            return apiResponse(
+                message: 'The idempotency key has already been used with a different order request.',
                 status: 409
             );
         }
