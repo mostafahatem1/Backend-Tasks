@@ -20,7 +20,7 @@ class OrderCreationTest extends TestCase
 
     public function test_an_unauthenticated_user_cannot_create_an_order(): void
     {
-        $response = $this->postJson('/api/orders', [
+        $response = $this->postJson('/api/v1/orders', [
             'items' => [
                 ['product_id' => 1, 'quantity' => 1],
             ],
@@ -39,7 +39,7 @@ class OrderCreationTest extends TestCase
         $user = User::factory()->create();
         Sanctum::actingAs($user);
 
-        $response = $this->postJson('/api/orders', [
+        $response = $this->postJson('/api/v1/orders', [
             'items' => [
                 [
                     'product_id' => $product->id,
@@ -90,7 +90,7 @@ class OrderCreationTest extends TestCase
         $user = User::factory()->create();
         Sanctum::actingAs($user);
 
-        $response = $this->postJson('/api/orders', [
+        $response = $this->postJson('/api/v1/orders', [
             'items' => [
                 ['product_id' => $product1->id, 'quantity' => 3],
                 ['product_id' => $product2->id, 'quantity' => 2],
@@ -120,7 +120,7 @@ class OrderCreationTest extends TestCase
         $user = User::factory()->create();
         Sanctum::actingAs($user);
 
-        $response = $this->postJson('/api/orders', [
+        $response = $this->postJson('/api/v1/orders', [
             'items' => [
                 [
                     'product_id' => $product->id,
@@ -157,7 +157,7 @@ class OrderCreationTest extends TestCase
         $user = User::factory()->create();
         Sanctum::actingAs($user);
 
-        $response = $this->postJson('/api/orders', [
+        $response = $this->postJson('/api/v1/orders', [
             'items' => [
                 ['product_id' => $product->id, 'quantity' => 3],
             ],
@@ -186,7 +186,7 @@ class OrderCreationTest extends TestCase
         $user = User::factory()->create();
         Sanctum::actingAs($user);
 
-        $response = $this->postJson('/api/orders', [
+        $response = $this->postJson('/api/v1/orders', [
             'items' => [
                 ['product_id' => $p1->id, 'quantity' => 1],
                 ['product_id' => $p2->id, 'quantity' => 1],
@@ -210,34 +210,34 @@ class OrderCreationTest extends TestCase
         $product = Product::factory()->create(['available_stock' => 10]);
 
         // Missing items
-        $this->postJson('/api/orders', [])->assertStatus(422);
+        $this->postJson('/api/v1/orders', [])->assertStatus(422);
 
         // Empty items
-        $this->postJson('/api/orders', ['items' => []])->assertStatus(422);
+        $this->postJson('/api/v1/orders', ['items' => []])->assertStatus(422);
 
         // Missing product_id
-        $this->postJson('/api/orders', ['items' => [['quantity' => 1]]])->assertStatus(422);
+        $this->postJson('/api/v1/orders', ['items' => [['quantity' => 1]]])->assertStatus(422);
 
         // Missing quantity
-        $this->postJson('/api/orders', ['items' => [['product_id' => $product->id]]])->assertStatus(422);
+        $this->postJson('/api/v1/orders', ['items' => [['product_id' => $product->id]]])->assertStatus(422);
 
         // Zero quantity
-        $this->postJson('/api/orders', ['items' => [['product_id' => $product->id, 'quantity' => 0]]])->assertStatus(422);
+        $this->postJson('/api/v1/orders', ['items' => [['product_id' => $product->id, 'quantity' => 0]]])->assertStatus(422);
 
         // Negative quantity
-        $this->postJson('/api/orders', ['items' => [['product_id' => $product->id, 'quantity' => -2]]])->assertStatus(422);
+        $this->postJson('/api/v1/orders', ['items' => [['product_id' => $product->id, 'quantity' => -2]]])->assertStatus(422);
 
         // Non-integer quantity
-        $this->postJson('/api/orders', ['items' => [['product_id' => $product->id, 'quantity' => 1.5]]])->assertStatus(422);
+        $this->postJson('/api/v1/orders', ['items' => [['product_id' => $product->id, 'quantity' => 1.5]]])->assertStatus(422);
 
         // Duplicate product IDs
-        $this->postJson('/api/orders', ['items' => [
+        $this->postJson('/api/v1/orders', ['items' => [
             ['product_id' => $product->id, 'quantity' => 1],
             ['product_id' => $product->id, 'quantity' => 2],
         ]])->assertStatus(422);
 
         // Nonexistent product ID
-        $this->postJson('/api/orders', ['items' => [['product_id' => 99999, 'quantity' => 1]]])->assertStatus(422);
+        $this->postJson('/api/v1/orders', ['items' => [['product_id' => 99999, 'quantity' => 1]]])->assertStatus(422);
     }
 
     public function test_order_creation_fails_when_one_product_has_insufficient_stock(): void
@@ -250,7 +250,7 @@ class OrderCreationTest extends TestCase
         $user = User::factory()->create();
         Sanctum::actingAs($user);
 
-        $response = $this->postJson('/api/orders', [
+        $response = $this->postJson('/api/v1/orders', [
             'items' => [
                 ['product_id' => $product->id, 'quantity' => 5],
             ],
@@ -284,7 +284,7 @@ class OrderCreationTest extends TestCase
         $user = User::factory()->create();
         Sanctum::actingAs($user);
 
-        $response = $this->postJson('/api/orders', [
+        $response = $this->postJson('/api/v1/orders', [
             'items' => [
                 ['product_id' => $product1->id, 'quantity' => 2],
                 ['product_id' => $product2->id, 'quantity' => 5],
@@ -306,7 +306,7 @@ class OrderCreationTest extends TestCase
         $user = User::factory()->create();
         Sanctum::actingAs($user);
 
-        $response = $this->postJson('/api/orders', [
+        $response = $this->postJson('/api/v1/orders', [
             'items' => [
                 ['product_id' => $product->id, 'quantity' => 1],
             ],
@@ -324,14 +324,14 @@ class OrderCreationTest extends TestCase
         $user2 = User::factory()->create();
 
         Sanctum::actingAs($user1);
-        $response1 = $this->postJson('/api/orders', [
+        $response1 = $this->postJson('/api/v1/orders', [
             'items' => [
                 ['product_id' => $product->id, 'quantity' => 1],
             ],
         ]);
 
         Sanctum::actingAs($user2);
-        $response2 = $this->postJson('/api/orders', [
+        $response2 = $this->postJson('/api/v1/orders', [
             'items' => [
                 ['product_id' => $product->id, 'quantity' => 1],
             ],
@@ -392,7 +392,7 @@ class OrderCreationTest extends TestCase
         $user = User::factory()->create();
         Sanctum::actingAs($user);
 
-        $response = $this->postJson('/api/orders', [
+        $response = $this->postJson('/api/v1/orders', [
             'items' => [
                 ['product_id' => $product->id, 'quantity' => 2],
             ],

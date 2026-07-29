@@ -30,7 +30,7 @@ class NewProductNotificationTest extends TestCase
 
         $file = UploadedFile::fake()->image('monitor.jpg');
 
-        $response = $this->postJson('/api/admin/products', [
+        $response = $this->postJson('/api/v1/admin/products', [
             'title' => '4K Gaming Monitor',
             'price' => 399.99,
             'description' => 'Ultra HD 144Hz Monitor',
@@ -54,7 +54,7 @@ class NewProductNotificationTest extends TestCase
         $admin = User::factory()->admin()->create();
         Sanctum::actingAs($admin);
 
-        $response = $this->postJson('/api/admin/products', [
+        $response = $this->postJson('/api/v1/admin/products', [
             'title' => '',
             'price' => -10,
         ]);
@@ -70,7 +70,7 @@ class NewProductNotificationTest extends TestCase
         $user = User::factory()->create();
         Sanctum::actingAs($user);
 
-        $response = $this->postJson('/api/admin/products', [
+        $response = $this->postJson('/api/v1/admin/products', [
             'title' => 'Product',
             'price' => 20,
             'description' => 'Desc',
@@ -91,7 +91,7 @@ class NewProductNotificationTest extends TestCase
 
         $file = UploadedFile::fake()->image('speaker.jpg');
 
-        $response = $this->postJson('/api/admin/products', [
+        $response = $this->postJson('/api/v1/admin/products', [
             'title' => 'Bluetooth Speaker',
             'price' => 79.99,
             'description' => 'Portable Speaker',
@@ -218,7 +218,7 @@ class NewProductNotificationTest extends TestCase
 
         $file = UploadedFile::fake()->image('laptop.jpg');
 
-        $response = $this->postJson('/api/admin/products', [
+        $response = $this->postJson('/api/v1/admin/products', [
             'title' => 'Gaming Laptop',
             'price' => 1499.99,
             'description' => 'High performance laptop',

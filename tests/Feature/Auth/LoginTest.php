@@ -17,7 +17,7 @@ class LoginTest extends TestCase
             'password' => 'password123',
         ]);
 
-        $response = $this->postJson('/api/auth/login', [
+        $response = $this->postJson('/api/v1/auth/login', [
             'phone' => '+1234567890',
             'password' => 'password123',
         ]);
@@ -63,7 +63,7 @@ class LoginTest extends TestCase
 
     public function test_login_fails_when_required_fields_are_missing(): void
     {
-        $response = $this->postJson('/api/auth/login', []);
+        $response = $this->postJson('/api/v1/auth/login', []);
 
         $response->assertStatus(422)
             ->assertJsonValidationErrors(['phone', 'password']);
@@ -73,7 +73,7 @@ class LoginTest extends TestCase
 
     public function test_login_fails_with_an_invalid_phone_format(): void
     {
-        $response = $this->postJson('/api/auth/login', [
+        $response = $this->postJson('/api/v1/auth/login', [
             'phone' => '12345',
             'password' => 'password123',
         ]);
@@ -91,7 +91,7 @@ class LoginTest extends TestCase
             'password' => 'password123',
         ]);
 
-        $response = $this->postJson('/api/auth/login', [
+        $response = $this->postJson('/api/v1/auth/login', [
             'phone' => '+1234567890',
             'password' => 'wrongpassword',
         ]);
@@ -106,7 +106,7 @@ class LoginTest extends TestCase
 
     public function test_login_fails_when_the_phone_does_not_exist(): void
     {
-        $response = $this->postJson('/api/auth/login', [
+        $response = $this->postJson('/api/v1/auth/login', [
             'phone' => '+1999999999',
             'password' => 'password123',
         ]);
@@ -126,7 +126,7 @@ class LoginTest extends TestCase
             'password' => 'password123',
         ]);
 
-        $loginResponse = $this->postJson('/api/auth/login', [
+        $loginResponse = $this->postJson('/api/v1/auth/login', [
             'phone' => '+1234567890',
             'password' => 'password123',
         ]);
@@ -134,7 +134,7 @@ class LoginTest extends TestCase
         $token = $loginResponse->json('data.access_token');
 
         $protectedResponse = $this->withToken($token)
-            ->getJson('/api/user');
+            ->getJson('/api/v1/user');
 
         $protectedResponse->assertStatus(200)
             ->assertJson([
