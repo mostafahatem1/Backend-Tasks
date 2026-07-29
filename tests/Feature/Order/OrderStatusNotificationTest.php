@@ -29,7 +29,7 @@ class OrderStatusNotificationTest extends TestCase
 
         Sanctum::actingAs($admin);
 
-        $response = $this->patchJson("/api/admin/orders/{$order->id}/status", [
+        $response = $this->patchJson("/api/v1/admin/orders/{$order->id}/status", [
             'status' => 'confirmed',
         ]);
 
@@ -47,7 +47,7 @@ class OrderStatusNotificationTest extends TestCase
 
         Sanctum::actingAs($admin);
 
-        $response = $this->patchJson("/api/admin/orders/{$order->id}/status", [
+        $response = $this->patchJson("/api/v1/admin/orders/{$order->id}/status", [
             'status' => 'pending',
         ]);
 
@@ -65,7 +65,7 @@ class OrderStatusNotificationTest extends TestCase
 
         Sanctum::actingAs($admin);
 
-        $response = $this->patchJson("/api/admin/orders/{$order->id}/status", [
+        $response = $this->patchJson("/api/v1/admin/orders/{$order->id}/status", [
             'status' => 'shipped',
         ]);
 
@@ -84,7 +84,7 @@ class OrderStatusNotificationTest extends TestCase
 
         Sanctum::actingAs($admin);
 
-        $response = $this->patchJson("/api/admin/orders/{$order->id}/status", [
+        $response = $this->patchJson("/api/v1/admin/orders/{$order->id}/status", [
             'status' => 'confirmed',
         ]);
 
@@ -104,7 +104,7 @@ class OrderStatusNotificationTest extends TestCase
 
         Sanctum::actingAs($admin);
 
-        $response = $this->patchJson("/api/admin/orders/{$order->id}/status", [
+        $response = $this->patchJson("/api/v1/admin/orders/{$order->id}/status", [
             'status' => 'confirmed',
         ]);
 
@@ -291,7 +291,7 @@ class OrderStatusNotificationTest extends TestCase
         try {
             Sanctum::actingAs($admin);
 
-            $response = $this->patchJson("/api/admin/orders/{$order->id}/status", [
+            $response = $this->patchJson("/api/v1/admin/orders/{$order->id}/status", [
                 'status' => 'confirmed',
             ]);
 

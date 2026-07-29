@@ -20,7 +20,7 @@ class RegisterTest extends TestCase
             'password_confirmation' => 'password123',
         ];
 
-        $response = $this->postJson('/api/auth/register', $payload);
+        $response = $this->postJson('/api/v1/auth/register', $payload);
 
         $response->assertStatus(201)
             ->assertJson([
@@ -60,7 +60,7 @@ class RegisterTest extends TestCase
 
     public function test_registration_fails_when_required_fields_are_missing(): void
     {
-        $response = $this->postJson('/api/auth/register', []);
+        $response = $this->postJson('/api/v1/auth/register', []);
 
         $response->assertStatus(422)
             ->assertJsonValidationErrors(['name', 'phone', 'password']);
@@ -68,7 +68,7 @@ class RegisterTest extends TestCase
 
     public function test_registration_fails_with_an_invalid_phone_format(): void
     {
-        $response = $this->postJson('/api/auth/register', [
+        $response = $this->postJson('/api/v1/auth/register', [
             'name' => 'John Doe',
             'phone' => '1234567',
             'password' => 'password123',
@@ -85,7 +85,7 @@ class RegisterTest extends TestCase
             'phone' => '+1234567890',
         ]);
 
-        $response = $this->postJson('/api/auth/register', [
+        $response = $this->postJson('/api/v1/auth/register', [
             'name' => 'Jane Doe',
             'phone' => '+1234567890',
             'password' => 'password123',
@@ -100,7 +100,7 @@ class RegisterTest extends TestCase
 
     public function test_registration_fails_when_password_confirmation_does_not_match(): void
     {
-        $response = $this->postJson('/api/auth/register', [
+        $response = $this->postJson('/api/v1/auth/register', [
             'name' => 'John Doe',
             'phone' => '+1234567890',
             'password' => 'password123',
@@ -113,7 +113,7 @@ class RegisterTest extends TestCase
 
     public function test_a_client_cannot_create_an_admin_account_through_registration(): void
     {
-        $response = $this->postJson('/api/auth/register', [
+        $response = $this->postJson('/api/v1/auth/register', [
             'name' => 'Hacker Admin',
             'phone' => '+1234567899',
             'password' => 'password123',

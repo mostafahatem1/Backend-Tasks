@@ -16,7 +16,7 @@ class OrderViewingTest extends TestCase
 
     public function test_an_unauthenticated_request_cannot_list_orders(): void
     {
-        $response = $this->getJson('/api/orders');
+        $response = $this->getJson('/api/v1/orders');
 
         $response->assertStatus(401);
     }
@@ -25,7 +25,7 @@ class OrderViewingTest extends TestCase
     {
         $order = Order::factory()->create();
 
-        $response = $this->getJson("/api/orders/{$order->id}");
+        $response = $this->getJson("/api/v1/orders/{$order->id}");
 
         $response->assertStatus(401);
     }
@@ -41,7 +41,7 @@ class OrderViewingTest extends TestCase
 
         Sanctum::actingAs($user1);
 
-        $response = $this->getJson('/api/orders');
+        $response = $this->getJson('/api/v1/orders');
 
         $response->assertStatus(200)
             ->assertJsonCount(2, 'data');
@@ -62,7 +62,7 @@ class OrderViewingTest extends TestCase
 
         Sanctum::actingAs($user);
 
-        $response = $this->getJson('/api/orders');
+        $response = $this->getJson('/api/v1/orders');
 
         $response->assertStatus(200);
 
@@ -81,7 +81,7 @@ class OrderViewingTest extends TestCase
         $admin = User::factory()->admin()->create();
         Sanctum::actingAs($admin);
 
-        $response = $this->getJson('/api/orders');
+        $response = $this->getJson('/api/v1/orders');
 
         $response->assertStatus(200);
 
@@ -111,7 +111,7 @@ class OrderViewingTest extends TestCase
 
         Sanctum::actingAs($user);
 
-        $response = $this->getJson("/api/orders/{$order->id}");
+        $response = $this->getJson("/api/v1/orders/{$order->id}");
 
         $response->assertStatus(200)
             ->assertJson([
@@ -143,7 +143,7 @@ class OrderViewingTest extends TestCase
 
         Sanctum::actingAs($otherUser);
 
-        $response = $this->getJson("/api/orders/{$order->id}");
+        $response = $this->getJson("/api/v1/orders/{$order->id}");
 
         $response->assertStatus(403);
     }
@@ -156,7 +156,7 @@ class OrderViewingTest extends TestCase
         $admin = User::factory()->admin()->create();
         Sanctum::actingAs($admin);
 
-        $response = $this->getJson("/api/orders/{$order->id}");
+        $response = $this->getJson("/api/v1/orders/{$order->id}");
 
         $response->assertStatus(200)
             ->assertJson([
@@ -172,7 +172,7 @@ class OrderViewingTest extends TestCase
         $user = User::factory()->create();
         Sanctum::actingAs($user);
 
-        $response = $this->getJson('/api/orders/99999');
+        $response = $this->getJson('/api/v1/orders/99999');
 
         $response->assertStatus(404);
     }
@@ -192,7 +192,7 @@ class OrderViewingTest extends TestCase
 
         Sanctum::actingAs($user);
 
-        $response = $this->getJson("/api/orders/{$order->id}");
+        $response = $this->getJson("/api/v1/orders/{$order->id}");
 
         $response->assertStatus(200)
             ->assertJson([
@@ -235,7 +235,7 @@ class OrderViewingTest extends TestCase
 
         Sanctum::actingAs($user);
 
-        $response = $this->getJson("/api/orders/{$order->id}");
+        $response = $this->getJson("/api/v1/orders/{$order->id}");
 
         $response->assertStatus(200)
             ->assertJson([
@@ -252,7 +252,7 @@ class OrderViewingTest extends TestCase
         // Delete product
         $product->delete();
 
-        $responseAfterDelete = $this->getJson("/api/orders/{$order->id}");
+        $responseAfterDelete = $this->getJson("/api/v1/orders/{$order->id}");
 
         $responseAfterDelete->assertStatus(200)
             ->assertJson([
@@ -277,7 +277,7 @@ class OrderViewingTest extends TestCase
 
         Sanctum::actingAs($user1);
 
-        $response = $this->getJson("/api/orders?user_id={$user2->id}");
+        $response = $this->getJson("/api/v1/orders?user_id={$user2->id}");
 
         $response->assertStatus(200)
             ->assertJsonCount(1, 'data');

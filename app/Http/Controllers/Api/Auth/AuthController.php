@@ -8,10 +8,16 @@ use App\Http\Requests\Auth\RegisterRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
+    public function user(Request $request): User
+    {
+        return $request->user();
+    }
+
     public function register(RegisterRequest $request): JsonResponse
     {
         $validated = $request->safe()->only(['name', 'phone', 'password']);

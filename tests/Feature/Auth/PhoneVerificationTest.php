@@ -17,14 +17,14 @@ class PhoneVerificationTest extends TestCase
 
     public function test_an_unauthenticated_user_cannot_request_a_verification_code(): void
     {
-        $response = $this->postJson('/api/auth/phone-verification/send');
+        $response = $this->postJson('/api/v1/auth/phone-verification/send');
 
         $response->assertStatus(401);
     }
 
     public function test_an_unauthenticated_user_cannot_verify_a_phone(): void
     {
-        $response = $this->postJson('/api/auth/phone-verification/verify', [
+        $response = $this->postJson('/api/v1/auth/phone-verification/verify', [
             'code' => '123456',
         ]);
 
@@ -38,7 +38,7 @@ class PhoneVerificationTest extends TestCase
         $user = User::factory()->unverified()->create();
         Sanctum::actingAs($user);
 
-        $response = $this->postJson('/api/auth/phone-verification/send');
+        $response = $this->postJson('/api/v1/auth/phone-verification/send');
 
         $response->assertStatus(200)
             ->assertJson([
@@ -70,7 +70,7 @@ class PhoneVerificationTest extends TestCase
         Sanctum::actingAs($user);
 
         // First request
-        $this->postJson('/api/auth/phone-verification/send')->assertStatus(200);
+        $this->postJson('/api/v1/auth/phone-verification/send')->assertStatus(200);
 
         $firstCode = null;
         Notification::assertSentTo($user, PhoneVerificationCodeNotification::class, function ($notification) use (&$firstCode) {
@@ -80,7 +80,7 @@ class PhoneVerificationTest extends TestCase
 
         // Second request
         Notification::fake();
-        $this->postJson('/api/auth/phone-verification/send')->assertStatus(200);
+        $this->postJson('/api/v1/auth/phone-verification/send')->assertStatus(200);
 
         $secondCode = null;
         Notification::assertSentTo($user, PhoneVerificationCodeNotification::class, function ($notification) use (&$secondCode) {
@@ -91,13 +91,13 @@ class PhoneVerificationTest extends TestCase
         $this->assertDatabaseCount('phone_verification_codes', 1);
 
         // First code fails
-        $failResponse = $this->postJson('/api/auth/phone-verification/verify', [
+        $failResponse = $this->postJson('/api/v1/auth/phone-verification/verify', [
             'code' => $firstCode,
         ]);
         $failResponse->assertStatus(422);
 
         // Second code succeeds
-        $successResponse = $this->postJson('/api/auth/phone-verification/verify', [
+        $successResponse = $this->postJson('/api/v1/auth/phone-verification/verify', [
             'code' => $secondCode,
         ]);
         $successResponse->assertStatus(200);
@@ -114,7 +114,7 @@ class PhoneVerificationTest extends TestCase
             'expires_at' => now()->addMinutes(10),
         ]);
 
-        $response = $this->postJson('/api/auth/phone-verification/verify', [
+        $response = $this->postJson('/api/v1/auth/phone-verification/verify', [
             'code' => '123456',
         ]);
 
@@ -151,7 +151,7 @@ class PhoneVerificationTest extends TestCase
         $user = User::factory()->unverified()->create();
         Sanctum::actingAs($user);
 
-        $response = $this->postJson('/api/auth/phone-verification/verify', [
+        $response = $this->postJson('/api/v1/auth/phone-verification/verify', [
             'code' => '1234',
         ]);
 
@@ -170,7 +170,7 @@ class PhoneVerificationTest extends TestCase
             'expires_at' => now()->addMinutes(10),
         ]);
 
-        $response = $this->postJson('/api/auth/phone-verification/verify', [
+        $response = $this->postJson('/api/v1/auth/phone-verification/verify', [
             'code' => '654321',
         ]);
 
@@ -193,7 +193,7 @@ class PhoneVerificationTest extends TestCase
             'expires_at' => now()->subMinute(),
         ]);
 
-        $response = $this->postJson('/api/auth/phone-verification/verify', [
+        $response = $this->postJson('/api/v1/auth/phone-verification/verify', [
             'code' => '123456',
         ]);
 
@@ -218,13 +218,13 @@ class PhoneVerificationTest extends TestCase
         ]);
 
         // First verification succeeds
-        $firstResponse = $this->postJson('/api/auth/phone-verification/verify', [
+        $firstResponse = $this->postJson('/api/v1/auth/phone-verification/verify', [
             'code' => '123456',
         ]);
         $firstResponse->assertStatus(200);
 
         // Second verification fails with 409 because phone is already verified
-        $secondResponse = $this->postJson('/api/auth/phone-verification/verify', [
+        $secondResponse = $this->postJson('/api/v1/auth/phone-verification/verify', [
             'code' => '123456',
         ]);
         $secondResponse->assertStatus(409)
@@ -242,7 +242,7 @@ class PhoneVerificationTest extends TestCase
         ]);
         Sanctum::actingAs($user);
 
-        $response = $this->postJson('/api/auth/phone-verification/send');
+        $response = $this->postJson('/api/v1/auth/phone-verification/send');
 
         $response->assertStatus(409)
             ->assertJson([

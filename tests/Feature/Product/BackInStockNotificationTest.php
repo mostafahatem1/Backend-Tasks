@@ -23,7 +23,7 @@ class BackInStockNotificationTest extends TestCase
     {
         $product = Product::factory()->create(['available_stock' => 0]);
 
-        $response = $this->postJson("/api/products/{$product->id}/stock-notification-requests");
+        $response = $this->postJson("/api/v1/products/{$product->id}/stock-notification-requests");
 
         $response->assertStatus(401);
     }
@@ -35,7 +35,7 @@ class BackInStockNotificationTest extends TestCase
         $user = User::factory()->create();
         Sanctum::actingAs($user);
 
-        $response = $this->postJson("/api/products/{$product->id}/stock-notification-requests");
+        $response = $this->postJson("/api/v1/products/{$product->id}/stock-notification-requests");
 
         $response->assertStatus(409)
             ->assertJson([
@@ -52,7 +52,7 @@ class BackInStockNotificationTest extends TestCase
         $user = User::factory()->create();
         Sanctum::actingAs($user);
 
-        $response = $this->postJson("/api/products/{$product->id}/stock-notification-requests");
+        $response = $this->postJson("/api/v1/products/{$product->id}/stock-notification-requests");
 
         $response->assertStatus(201)
             ->assertJson([
@@ -75,10 +75,10 @@ class BackInStockNotificationTest extends TestCase
         $user = User::factory()->create();
         Sanctum::actingAs($user);
 
-        $firstResponse = $this->postJson("/api/products/{$product->id}/stock-notification-requests");
+        $firstResponse = $this->postJson("/api/v1/products/{$product->id}/stock-notification-requests");
         $firstResponse->assertStatus(201);
 
-        $secondResponse = $this->postJson("/api/products/{$product->id}/stock-notification-requests");
+        $secondResponse = $this->postJson("/api/v1/products/{$product->id}/stock-notification-requests");
         $secondResponse->assertStatus(200)
             ->assertJson([
                 'message' => 'Stock notification request already exists.',
@@ -98,10 +98,10 @@ class BackInStockNotificationTest extends TestCase
         $user2 = User::factory()->create();
 
         Sanctum::actingAs($user1);
-        $this->postJson("/api/products/{$product->id}/stock-notification-requests")->assertStatus(201);
+        $this->postJson("/api/v1/products/{$product->id}/stock-notification-requests")->assertStatus(201);
 
         Sanctum::actingAs($user2);
-        $this->postJson("/api/products/{$product->id}/stock-notification-requests")->assertStatus(201);
+        $this->postJson("/api/v1/products/{$product->id}/stock-notification-requests")->assertStatus(201);
 
         $this->assertDatabaseCount('product_stock_notification_requests', 2);
     }
@@ -115,7 +115,7 @@ class BackInStockNotificationTest extends TestCase
         $admin = User::factory()->admin()->create();
         Sanctum::actingAs($admin);
 
-        $response = $this->patchJson("/api/admin/products/{$product->id}", [
+        $response = $this->patchJson("/api/v1/admin/products/{$product->id}", [
             'available_stock' => 10,
         ]);
 
@@ -136,15 +136,15 @@ class BackInStockNotificationTest extends TestCase
 
         // Case A: Positive to positive (5 -> 10)
         $productA = Product::factory()->create(['available_stock' => 5]);
-        $this->patchJson("/api/admin/products/{$productA->id}", ['available_stock' => 10])->assertStatus(200);
+        $this->patchJson("/api/v1/admin/products/{$productA->id}", ['available_stock' => 10])->assertStatus(200);
 
         // Case B: Positive to zero (5 -> 0)
         $productB = Product::factory()->create(['available_stock' => 5]);
-        $this->patchJson("/api/admin/products/{$productB->id}", ['available_stock' => 0])->assertStatus(200);
+        $this->patchJson("/api/v1/admin/products/{$productB->id}", ['available_stock' => 0])->assertStatus(200);
 
         // Case C: Title update when stock remains zero (0 -> 0)
         $productC = Product::factory()->create(['available_stock' => 0]);
-        $this->patchJson("/api/admin/products/{$productC->id}", ['title' => 'Updated Title'])->assertStatus(200);
+        $this->patchJson("/api/v1/admin/products/{$productC->id}", ['title' => 'Updated Title'])->assertStatus(200);
 
         Event::assertNotDispatched(ProductRestocked::class);
     }
@@ -158,7 +158,7 @@ class BackInStockNotificationTest extends TestCase
         $admin = User::factory()->admin()->create();
         Sanctum::actingAs($admin);
 
-        $response = $this->patchJson("/api/admin/products/{$product->id}", [
+        $response = $this->patchJson("/api/v1/admin/products/{$product->id}", [
             'available_stock' => 15,
         ]);
 
@@ -178,7 +178,7 @@ class BackInStockNotificationTest extends TestCase
         $admin = User::factory()->admin()->create();
         Sanctum::actingAs($admin);
 
-        $response = $this->patchJson("/api/admin/products/{$product->id}", [
+        $response = $this->patchJson("/api/v1/admin/products/{$product->id}", [
             'available_stock' => 20,
         ]);
 

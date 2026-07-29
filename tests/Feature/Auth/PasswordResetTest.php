@@ -22,7 +22,7 @@ class PasswordResetTest extends TestCase
             'phone' => '+1234567890',
         ]);
 
-        $response = $this->postJson('/api/auth/password/forgot', [
+        $response = $this->postJson('/api/v1/auth/password/forgot', [
             'phone' => '+1234567890',
         ]);
 
@@ -54,7 +54,7 @@ class PasswordResetTest extends TestCase
     {
         Notification::fake();
 
-        $response = $this->postJson('/api/auth/password/forgot', [
+        $response = $this->postJson('/api/v1/auth/password/forgot', [
             'phone' => '+1999999999',
         ]);
 
@@ -72,11 +72,11 @@ class PasswordResetTest extends TestCase
 
     public function test_forgot_password_validation_rejects_missing_or_invalid_phone(): void
     {
-        $missingResponse = $this->postJson('/api/auth/password/forgot', []);
+        $missingResponse = $this->postJson('/api/v1/auth/password/forgot', []);
         $missingResponse->assertStatus(422)
             ->assertJsonValidationErrors(['phone']);
 
-        $invalidResponse = $this->postJson('/api/auth/password/forgot', [
+        $invalidResponse = $this->postJson('/api/v1/auth/password/forgot', [
             'phone' => '1234',
         ]);
         $invalidResponse->assertStatus(422)
@@ -92,7 +92,7 @@ class PasswordResetTest extends TestCase
         ]);
 
         // First request
-        $this->postJson('/api/auth/password/forgot', ['phone' => '+1234567890'])->assertStatus(200);
+        $this->postJson('/api/v1/auth/password/forgot', ['phone' => '+1234567890'])->assertStatus(200);
 
         $firstCode = null;
         Notification::assertSentTo($user, PasswordResetCodeNotification::class, function ($notification) use (&$firstCode) {
@@ -102,7 +102,7 @@ class PasswordResetTest extends TestCase
 
         // Second request
         Notification::fake();
-        $this->postJson('/api/auth/password/forgot', ['phone' => '+1234567890'])->assertStatus(200);
+        $this->postJson('/api/v1/auth/password/forgot', ['phone' => '+1234567890'])->assertStatus(200);
 
         $secondCode = null;
         Notification::assertSentTo($user, PasswordResetCodeNotification::class, function ($notification) use (&$secondCode) {
@@ -113,7 +113,7 @@ class PasswordResetTest extends TestCase
         $this->assertEquals(1, DB::table('password_reset_tokens')->where('phone', '+1234567890')->count());
 
         // First code fails
-        $failResponse = $this->postJson('/api/auth/password/reset', [
+        $failResponse = $this->postJson('/api/v1/auth/password/reset', [
             'phone' => '+1234567890',
             'code' => $firstCode,
             'password' => 'newpassword123',
@@ -122,7 +122,7 @@ class PasswordResetTest extends TestCase
         $failResponse->assertStatus(422);
 
         // Second code succeeds
-        $successResponse = $this->postJson('/api/auth/password/reset', [
+        $successResponse = $this->postJson('/api/v1/auth/password/reset', [
             'phone' => '+1234567890',
             'code' => $secondCode,
             'password' => 'newpassword123',
@@ -144,7 +144,7 @@ class PasswordResetTest extends TestCase
             'created_at' => now(),
         ]);
 
-        $response = $this->postJson('/api/auth/password/reset', [
+        $response = $this->postJson('/api/v1/auth/password/reset', [
             'phone' => '+1234567890',
             'code' => '123456',
             'password' => 'newpassword123',
@@ -165,7 +165,7 @@ class PasswordResetTest extends TestCase
 
     public function test_reset_password_validation_rejects_invalid_inputs(): void
     {
-        $response = $this->postJson('/api/auth/password/reset', [
+        $response = $this->postJson('/api/v1/auth/password/reset', [
             'phone' => '1234',
             'code' => '12',
             'password' => 'short',
@@ -189,7 +189,7 @@ class PasswordResetTest extends TestCase
             'created_at' => now(),
         ]);
 
-        $response = $this->postJson('/api/auth/password/reset', [
+        $response = $this->postJson('/api/v1/auth/password/reset', [
             'phone' => '+1234567890',
             'code' => '654321',
             'password' => 'newpassword123',
@@ -217,7 +217,7 @@ class PasswordResetTest extends TestCase
             'created_at' => now()->subMinutes(11),
         ]);
 
-        $response = $this->postJson('/api/auth/password/reset', [
+        $response = $this->postJson('/api/v1/auth/password/reset', [
             'phone' => '+1234567890',
             'code' => '123456',
             'password' => 'newpassword123',
@@ -235,7 +235,7 @@ class PasswordResetTest extends TestCase
 
     public function test_reset_fails_when_the_phone_does_not_exist(): void
     {
-        $response = $this->postJson('/api/auth/password/reset', [
+        $response = $this->postJson('/api/v1/auth/password/reset', [
             'phone' => '+1999999999',
             'code' => '123456',
             'password' => 'newpassword123',
@@ -262,7 +262,7 @@ class PasswordResetTest extends TestCase
         ]);
 
         // First attempt succeeds
-        $firstResponse = $this->postJson('/api/auth/password/reset', [
+        $firstResponse = $this->postJson('/api/v1/auth/password/reset', [
             'phone' => '+1234567890',
             'code' => '123456',
             'password' => 'newpassword123',
@@ -271,7 +271,7 @@ class PasswordResetTest extends TestCase
         $firstResponse->assertStatus(200);
 
         // Second attempt fails
-        $secondResponse = $this->postJson('/api/auth/password/reset', [
+        $secondResponse = $this->postJson('/api/v1/auth/password/reset', [
             'phone' => '+1234567890',
             'code' => '123456',
             'password' => 'anotherpassword123',
@@ -300,7 +300,7 @@ class PasswordResetTest extends TestCase
             'created_at' => now(),
         ]);
 
-        $response = $this->postJson('/api/auth/password/reset', [
+        $response = $this->postJson('/api/v1/auth/password/reset', [
             'phone' => '+1234567890',
             'code' => '123456',
             'password' => 'newpassword123',
@@ -325,7 +325,7 @@ class PasswordResetTest extends TestCase
             'created_at' => now(),
         ]);
 
-        $this->postJson('/api/auth/password/reset', [
+        $this->postJson('/api/v1/auth/password/reset', [
             'phone' => '+1234567801',
             'code' => '123456',
             'password' => 'newpassword123',
@@ -347,7 +347,7 @@ class PasswordResetTest extends TestCase
             'created_at' => now(),
         ]);
 
-        $this->postJson('/api/auth/password/reset', [
+        $this->postJson('/api/v1/auth/password/reset', [
             'phone' => '+1234567802',
             'code' => '123456',
             'password' => 'newpassword123',

@@ -16,7 +16,7 @@ class ProductManagementTest extends TestCase
 
     public function test_an_unauthenticated_visitor_cannot_list_products(): void
     {
-        $response = $this->getJson('/api/products');
+        $response = $this->getJson('/api/v1/products');
 
         $response->assertStatus(401);
     }
@@ -30,7 +30,7 @@ class ProductManagementTest extends TestCase
         $user = User::factory()->create();
         Sanctum::actingAs($user);
 
-        $response = $this->getJson('/api/products');
+        $response = $this->getJson('/api/v1/products');
 
         $response->assertStatus(200)
             ->assertJson([
@@ -67,7 +67,7 @@ class ProductManagementTest extends TestCase
         $user = User::factory()->create();
         Sanctum::actingAs($user);
 
-        $response = $this->getJson("/api/products/{$product->id}");
+        $response = $this->getJson("/api/v1/products/{$product->id}");
 
         $response->assertStatus(200)
             ->assertJson([
@@ -85,14 +85,14 @@ class ProductManagementTest extends TestCase
         $user = User::factory()->create();
         Sanctum::actingAs($user);
 
-        $response = $this->getJson('/api/products/9999');
+        $response = $this->getJson('/api/v1/products/9999');
 
         $response->assertStatus(404);
     }
 
     public function test_an_unauthenticated_user_cannot_create_a_product(): void
     {
-        $response = $this->postJson('/api/admin/products', [
+        $response = $this->postJson('/api/v1/admin/products', [
             'title' => 'Sample Product',
             'price' => 29.99,
             'description' => 'Description',
@@ -108,7 +108,7 @@ class ProductManagementTest extends TestCase
         $user = User::factory()->create();
         Sanctum::actingAs($user);
 
-        $response = $this->postJson('/api/admin/products', [
+        $response = $this->postJson('/api/v1/admin/products', [
             'title' => 'Sample Product',
             'price' => 29.99,
             'description' => 'Description',
@@ -132,7 +132,7 @@ class ProductManagementTest extends TestCase
 
         $file = UploadedFile::fake()->image('keyboard.jpg', 400, 400);
 
-        $response = $this->postJson('/api/admin/products', [
+        $response = $this->postJson('/api/v1/admin/products', [
             'title' => 'Mechanical Keyboard',
             'price' => 129.99,
             'description' => 'RGB Mechanical Keyboard',
@@ -172,13 +172,13 @@ class ProductManagementTest extends TestCase
         Sanctum::actingAs($admin);
 
         // Missing required fields
-        $missingResponse = $this->postJson('/api/admin/products', []);
+        $missingResponse = $this->postJson('/api/v1/admin/products', []);
         $missingResponse->assertStatus(422)
             ->assertJsonValidationErrors(['title', 'price', 'description', 'available_stock', 'image']);
 
         // Negative price & negative stock & invalid decimal & invalid file
         $invalidFile = UploadedFile::fake()->create('document.pdf', 100);
-        $invalidResponse = $this->postJson('/api/admin/products', [
+        $invalidResponse = $this->postJson('/api/v1/admin/products', [
             'title' => 'Bad Product',
             'price' => -10.00,
             'description' => 'Desc',
@@ -190,7 +190,7 @@ class ProductManagementTest extends TestCase
 
         // Too many decimal places
         $decimalFile = UploadedFile::fake()->image('test.png');
-        $decimalResponse = $this->postJson('/api/admin/products', [
+        $decimalResponse = $this->postJson('/api/v1/admin/products', [
             'title' => 'Decimal Product',
             'price' => 99.999,
             'description' => 'Desc',
@@ -210,7 +210,7 @@ class ProductManagementTest extends TestCase
         $user = User::factory()->create();
         Sanctum::actingAs($user);
 
-        $response = $this->patchJson("/api/admin/products/{$product->id}", [
+        $response = $this->patchJson("/api/v1/admin/products/{$product->id}", [
             'title' => 'Hacked Title',
         ]);
 
@@ -233,7 +233,7 @@ class ProductManagementTest extends TestCase
         $admin = User::factory()->admin()->create();
         Sanctum::actingAs($admin);
 
-        $response = $this->patchJson("/api/admin/products/{$product->id}", [
+        $response = $this->patchJson("/api/v1/admin/products/{$product->id}", [
             'title' => 'New Title',
             'price' => 75.50,
         ]);
@@ -265,7 +265,7 @@ class ProductManagementTest extends TestCase
 
         $newFile = UploadedFile::fake()->image('new_image.png');
 
-        $response = $this->patchJson("/api/admin/products/{$product->id}", [
+        $response = $this->patchJson("/api/v1/admin/products/{$product->id}", [
             'image' => $newFile,
         ]);
 
@@ -284,7 +284,7 @@ class ProductManagementTest extends TestCase
         $admin = User::factory()->admin()->create();
         Sanctum::actingAs($admin);
 
-        $response = $this->patchJson("/api/admin/products/{$product->id}", [
+        $response = $this->patchJson("/api/v1/admin/products/{$product->id}", [
             'price' => -20,
             'available_stock' => -1,
             'image' => 'not-an-image',
@@ -306,7 +306,7 @@ class ProductManagementTest extends TestCase
         $user = User::factory()->create();
         Sanctum::actingAs($user);
 
-        $response = $this->deleteJson("/api/admin/products/{$product->id}");
+        $response = $this->deleteJson("/api/v1/admin/products/{$product->id}");
 
         $response->assertStatus(403);
         $this->assertDatabaseHas('products', ['id' => $product->id]);
@@ -325,7 +325,7 @@ class ProductManagementTest extends TestCase
         $admin = User::factory()->admin()->create();
         Sanctum::actingAs($admin);
 
-        $response = $this->deleteJson("/api/admin/products/{$product->id}");
+        $response = $this->deleteJson("/api/v1/admin/products/{$product->id}");
 
         $response->assertStatus(200)
             ->assertJson([
@@ -347,7 +347,7 @@ class ProductManagementTest extends TestCase
         $admin = User::factory()->admin()->create();
         Sanctum::actingAs($admin);
 
-        $response = $this->deleteJson("/api/admin/products/{$product->id}");
+        $response = $this->deleteJson("/api/v1/admin/products/{$product->id}");
 
         $response->assertStatus(200);
         $this->assertDatabaseMissing('products', ['id' => $product->id]);
@@ -355,8 +355,8 @@ class ProductManagementTest extends TestCase
 
     public function test_admin_routes_reject_unauthenticated_requests_with_http_401(): void
     {
-        $this->postJson('/api/admin/products')->assertStatus(401);
-        $this->patchJson('/api/admin/products/1')->assertStatus(401);
-        $this->deleteJson('/api/admin/products/1')->assertStatus(401);
+        $this->postJson('/api/v1/admin/products')->assertStatus(401);
+        $this->patchJson('/api/v1/admin/products/1')->assertStatus(401);
+        $this->deleteJson('/api/v1/admin/products/1')->assertStatus(401);
     }
 }
