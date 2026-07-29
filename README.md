@@ -44,9 +44,9 @@ The application includes:
 - Authenticated users can list products and view individual product details.
 - Admin users can create, update (using `PUT` or `PATCH`), and delete products.
 - Product fields include `title`, `price`, `description`, `available_stock`, and `image`.
-- Product creation accepts image file uploads (`jpg`, `jpeg`, `png`, `webp` < 2MB).
+- Product creation accepts image file uploads (`jpg`, `jpeg`, `png`, and `webp` images up to 2 MB).
 - `ProductResource` exposes a full public `image_url` while concealing internal `image_path` storage locations.
-- Creating a product dispatches a queued event to notify users.
+- Creating a product dispatches an event that is handled by a queued listener.
 
 ### 3. Back-in-Stock Notifications
 - Users can request a notification for products with `available_stock = 0`.
@@ -99,7 +99,7 @@ Status transition rules:
 
 ### Product Listing Options (`GET /api/v1/products`)
 Supported query parameters:
-- `search`: Case-insensitive title and description search
+- `search`: Searches product titles and descriptions
 - `min_price`: Minimum product price filter (inclusive)
 - `max_price`: Maximum product price filter (inclusive)
 - `stock_status`: Filter by `in_stock` or `out_of_stock`
@@ -150,7 +150,7 @@ Base URL:
 
 - **PHP**: `^8.3` with `pdo`, `mbstring`, `openssl`, `ctype`, `json`, and `sqlite3` extensions
 - **Composer**: `2.x`
-- **Database**: SQLite (default), MySQL 8.0+, or PostgreSQL 15+
+- **Database**: SQLite (default), MySQL, or PostgreSQL
 
 ---
 
@@ -294,6 +294,8 @@ The collection contains variables (`base_url`, `user_phone`, `admin_phone`, `use
 - `Orders / Create Order` automatically sets `order_id` and `idempotent_order_id`.
 - For `Create Product`, manually attach a local image file in the `form-data` body under key `image`.
 
+The collection documents the complete API contract, including required headers, request bodies, example success responses, and validation or error responses where applicable.
+
 ---
 
 ## API Endpoint Summary
@@ -303,8 +305,8 @@ The collection contains variables (`base_url`, `user_phone`, `admin_phone`, `use
 | `POST` | `/api/v1/auth/register` | Public | Register a new user account |
 | `POST` | `/api/v1/auth/login` | Public | Authenticate user or admin and return Bearer token |
 | `GET` | `/api/v1/user` | Authenticated | Retrieve authenticated user profile |
-| `POST` | `/api/v1/auth/phone-verification/send` | Authenticated (Unverified) | Dispatch phone verification code to log |
-| `POST` | `/api/v1/auth/phone-verification/verify` | Authenticated (Unverified) | Verify phone number using code |
+| `POST` | `/api/v1/auth/phone-verification/send` | Authenticated | Dispatch phone verification code to log (already-verified users receive HTTP 409) |
+| `POST` | `/api/v1/auth/phone-verification/verify` | Authenticated | Verify phone number using code (already-verified users receive HTTP 409) |
 | `POST` | `/api/v1/auth/password/forgot` | Public | Request password reset code |
 | `POST` | `/api/v1/auth/password/reset` | Public | Reset account password |
 | `GET` | `/api/v1/products` | Authenticated | List products with filtering, sorting, & pagination |
@@ -330,10 +332,15 @@ The API returns consistent HTTP status codes and structured JSON responses:
 - **HTTP 404 Not Found**: Scoped JSON responses:
   - Missing product: `{"message": "Product not found."}`
   - Missing order: `{"message": "Order not found."}`
-  - Missing general resource: `{"message": "Resource not found."}`
   - Invalid route: `{"message": "Endpoint not found."}`
 - **HTTP 409 Conflict**: Business rule violations (insufficient stock, idempotency key mismatch, invalid status transition, stock alerts on in-stock items).
 - **HTTP 422 Unprocessable Content**: Form validation failures returning field-specific error messages.
+
+---
+
+## Git Commit Strategy
+
+The repository history is organized into feature-scoped commits. Each commit contains changes related to one feature or concern and uses a descriptive commit message.
 
 ---
 
