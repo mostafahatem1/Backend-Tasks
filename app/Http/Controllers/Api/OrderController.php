@@ -8,8 +8,10 @@ use App\Exceptions\IdempotencyKeyConflictException;
 use App\Exceptions\InsufficientStockException;
 use App\Exceptions\InvalidOrderStatusTransitionException;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Order\ListOrdersRequest;
 use App\Http\Requests\Order\StoreOrderRequest;
 use App\Http\Requests\Order\UpdateOrderStatusRequest;
+use App\Http\Resources\OrderCollection;
 use App\Http\Resources\OrderResource;
 use App\Models\Order;
 use App\Services\OrderService;
@@ -20,25 +22,24 @@ use Illuminate\Support\Facades\Gate;
 
 class OrderController extends Controller
 {
-    public function index(Request $request): JsonResponse
+    public function index(ListOrdersRequest $request): OrderCollection
     {
         Gate::authorize('viewAny', Order::class);
 
-        $user = $request->user();
+        $validated = $request->validated();
 
-        $query = Order::with('items')->orderBy('id', 'desc');
+        $orders = Order::query()
+            ->with('items')
+            ->visibleTo($request->user())
+            ->filter($validated)
+            ->sortByOptions(
+                $validated['sort_by'] ?? 'id',
+                $validated['sort_direction'] ?? 'desc'
+            )
+            ->paginate((int) ($validated['per_page'] ?? 15))
+            ->withQueryString();
 
-        if (! $user->isAdmin()) {
-            $query->where('user_id', $user->id);
-        }
-
-        $orders = $query->get();
-
-        return apiResponse(
-            data: OrderResource::collection($orders),
-            message: 'Orders retrieved successfully.',
-            status: 200
-        );
+        return new OrderCollection($orders);
     }
 
     public function show(Request $request, Order $order): JsonResponse
